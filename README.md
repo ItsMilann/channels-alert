@@ -13,40 +13,107 @@ On your terminal/shell
 
 ```bash
 
-pip3 install -r requirements.txt
+pip3 install ibalert
 
 sudo docker run -p 6379:6379 -d redis:5
 
-./manage.py runserver
+```
+
+### Quiz setup
+
+---
+
+In your project's settings.py file. Add ibalert and channels to intallled apps and configure redis.
+
+```python
+# settings.py
+
+INSTALLED_APPS = [
+  ...,
+  "ibalert",
+  "channels"
+]
+
+ASGI_APPLICATION = "ibalert.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {"hosts": [("localhost", 6379)]},
+    }
+}
 
 ```
 
-# How notification system should work.
+In your project's urls.py
 
-## **Common HTTP endpoint**
+```python
+...
+from django.views.generic import TemplateView
 
----
+urlpatterns = [
+    path("", TemplateView.as_view(template_name="home.html")),
+    ...
+]
+```
 
-- ### `/notification/unread`
+In your templates directory add home.html file. (Just to make sure the app is working. Later you can implement it the way you want.)
 
-  HTTP endpoint, shows unread notifications with unread count
+```html
+<html>
+  <head>
+    <title>IB-Alert</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+  </head>
 
-- ### `/notification/all`
+  <body>
+    <div class="container">
+      <h4 class="text-center">
+        Notifications
+        <span class="badge bg-danger" id="counter">0</span>
+      </h4>
 
-  HTTP endpoint, shows all notifications
+      <ul id="notifylist"></ul>
+    </div>
+  </body>
+  <script>
+    const webSocket = new WebSocket("ws://localhost:8000/notifications/")
+    webSocket.onclose = function (e) {
+      console.error("Chat socket closed unexpectedly")
+    }
+    webSocket.onopen = function (e) {
+      webSocket.send(JSON.stringify({ userID: 1 }))
+    }
+    webSocket.onmessage = function (action) {
+      const data = JSON.parse(action.data)
+      console.log(data.event == "Notification", data)
+      const nl = document.querySelector("#notifylist")
+      if (data.event == "Notification") {
+        var counter = document.getElementById("counter")
+        counter.innerText = data.unread_count
+        var el = document.createElement("li")
+        el.innerHTML = `<b>New Notification </b>: ${data.text}!`
+        nl.appendChild(el)
+      }
+    }
+  </script>
+</html>
+```
 
-## **First implementation using channels**
+Now make migrations, migrate, **createsuperuser** and runserver. You should see something like below.
 
----
+```bash
+starting ASGI/Channels version 3.0.4 development server at http://127.0.0.1:8000/
+```
 
-- ### `ws/notification/receiver`
+Open django shell `python3 manage.py shell` along with open `http://127.0.0.1:8000` on a browser. And run the following on your django shell.
 
-  WS endpoint, shows new notifications/
+```bash
+from ibalert.models import Notifications
+Notificatons.objects.create(text='hello there!', user_id=1)
+```
 
-## **Second implementation using websockets (python package)**
-
----
-
-- ### `ws/notification/receiver`
-
-  WS endpoint, shows new notifications/
+You should see new notification on your browser.
