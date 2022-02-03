@@ -25,6 +25,9 @@ setup(
     packages=find_packages(),
     install_requires=["channels", "channels-redis", "coloredlogs"],
     keywords=["python", "websocket", "channels", "python-alerts", "ideabreed"],
+    project_urls={
+        "channels-alert": "https://github.com/ItsMilann/channels-alert/tree/release",
+    },
     classifiers=[
         "Development Status :: 1 - Planning",
         "Intended Audience :: Developers",
